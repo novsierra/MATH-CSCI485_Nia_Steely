@@ -1,0 +1,307 @@
+---
+title: "Assignment 2: RFE"
+author: "Nia Steely"
+date: today
+project:
+  type: website
+  output-dir: docs
+format:
+  pdf:
+    pdf-engine: xelatex
+    geometry: margin=1in
+    fontsize: 12pt
+    mainfont: "Times New Roman"
+
+header-includes: |
+  \usepackage{xurl}
+  \usepackage{setspace}
+  \onehalfspacing
+
+editor: source
+---
+
+```{python}
+#| label: python setup
+#| include: false
+
+import pandas as pd
+import numpy as np
+import sklearn
+import matplotlib.pyplot as plt
+
+from sklearn.datasets import make_regression
+from sklearn.datasets import load_diabetes
+from sklearn.linear_model import LinearRegression
+from sklearn.feature_selection import RFE
+from sklearn.model_selection import train_test_split, cross_val_score
+from sklearn.metrics import mean_squared_error, r2_score
+```
+
+```{python}
+#| label: Task 1
+#| echo: false
+#| include: false
+
+# Dataset
+diabetes = load_diabetes()
+
+# Features and Target
+features = ['Age', 'Sex', 'BMI', 'BP', 'SV1', 'SV2', 'SV3', 'SV4', 'SV5', 'SV6']
+X = pd.DataFrame(diabetes.data, columns=features)
+y = diabetes.target
+
+# Exploration / Peek
+print(X.head())
+
+print("Target:", y[:5])
+
+# Split Data (80/20)
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size = 0.2, random_state = 42)
+```
+
+```{python}
+#| label: Task 2
+#| echo: false
+#| include: false
+
+# Linear Regression Model Training
+model = LinearRegression()
+model.fit(X_train, y_train)
+
+# Train model
+model = LinearRegression()
+model.fit(X_train, y_train)
+
+# Predict on test set
+y_pred = model.predict(X_test)
+
+# Evaluate
+''' r2 = r2_score(y_test, y_pred)
+print("R2 Score:", r2) '''
+```
+
+```{python}
+#| label: Task 3
+#| echo: false
+
+# Print initial feature coefficients
+''' print("Initial Linear Regression Coefficients:")
+for feature, coef in zip(features, model.coef_):
+    print(f"{feature}: {coef:.4f}") '''
+
+# Perform RFE with Visualization of Each Iteration
+n_features_to_select = 3
+rfe = RFE(estimator=model, n_features_to_select=n_features_to_select, step=1)
+
+# Track the ranking of features at each iteration
+rank_history = []
+
+# Track how the regression line fits over time
+for i in range(len(features), n_features_to_select, -1):
+    rfe = RFE(estimator=LinearRegression(), n_features_to_select=i - 1, step=1)
+    rfe.fit(X_train, y_train)
+    rank_history.append(rfe.ranking_)
+
+# Get features used in this iteration
+current_features = X.columns[rfe.support_]
+
+# Train and predict with the reduced feature set
+X__train_reduced = X_train[current_features]
+X_test_reduced = X_test[current_features]
+model = LinearRegression()
+model.fit(X__train_reduced, y_train)
+y_pred = model.predict(X_test_reduced)
+
+# Plot the predictions vs actuals for this iteration
+''' plt.figure(figsize=(8, 5))
+plt.scatter(range(len(y_test)), y_test, color='blue', label='Actual', alpha=0.6)
+plt.scatter(range(len(y_test)), y_pred, color='red', label='Predicted', alpha=0.6)
+plt.title(f"Iteration {len(features) - i + 1}: Features Used: {list(current_features)}")
+plt.xlabel("Sample Index")
+plt.ylabel("Target Value")
+plt.legend()
+plt.grid()
+plt.show() '''
+
+# Final RFE for the top 3 features
+rfe_final = RFE(estimator=model, n_features_to_select=n_features_to_select, step=1)
+rfe_final.fit(X, y)
+selected_features = X.columns[rfe_final.support_]
+X_final = X[selected_features]
+model.fit(X_final, y)
+
+
+# Final Plot of Selected Features
+''' y_final_pred = model.predict(X_final)
+plt.figure(figsize=(8, 5))
+plt.scatter(range(len(y)), y, color='blue', label='Actual', alpha=0.6)
+plt.scatter(range(len(y)), y_final_pred, color='green', label='Predicted', alpha=0.6)
+plt.title(f"Final Model with Top {n_features_to_select} Features: {list(selected_features)}")
+plt.xlabel("Sample Index")
+plt.ylabel("Target Value")
+plt.legend()
+plt.grid()
+plt.show() '''
+
+# Display Final Selected Features and Coefficients
+#  print("Final Selected Features and Coefficients:")
+# for feature, coef in zip(selected_features, model.coef_):
+    # print(f"{feature}: {coef:.4f}")
+
+# Perform RFE with Performance Metrics
+n_features_to_select = 3
+mse_scores = []
+r2_scores = []
+
+# Perform RFE iteratively and track performance
+for i in range(len(features), n_features_to_select, -1):
+    rfe = RFE(estimator=model, n_features_to_select=i - 1, step=1)
+    rfe.fit(X, y)
+
+    # Get features used in this iteration
+    current_features = X.columns[rfe.support_]
+
+    # Train and predict with the reduced feature set
+    X_reduced = X[current_features]
+    model.fit(X_reduced, y)
+    y_pred = model.predict(X_reduced)
+
+    # Calculate performance metrics
+    mse = mean_squared_error(y, y_pred)
+    r2 = r2_score(y, y_pred)
+    mse_scores.append(mse)
+    r2_scores.append(r2)
+
+    # Log iteration details
+    # print(f"Iteration {len(features) - i + 1}: Features Used: {list(current_features)}")
+    # print(f"  MSE: {mse:.4f}, R²: {r2:.4f}") 
+
+# Final RFE for the top 3 features
+rfe_final = RFE(estimator=model, n_features_to_select=n_features_to_select, step=1)
+rfe_final.fit(X, y)
+selected_features = X.columns[rfe_final.support_]
+X_final = X[selected_features]
+model.fit(X_final, y)
+y_final_pred = model.predict(X_final)
+
+# Plot Performance Metrics Over Iterations
+# plt.figure(figsize=(8, 4))
+iterations = range(len(features), n_features_to_select, -1)
+# plt.plot(iterations, mse_scores, marker='o', label='MSE', color='blue')
+# plt.plot(iterations, r2_scores, marker='o', label='R² Score', color='green')
+# plt.title("Model Performance During RFE")
+# plt.xlabel("Number of Features")
+# plt.ylabel("Performance Metric")
+# plt.gca().invert_xaxis() 
+
+# Reverse x-axis to show decreasing features
+# plt.legend()
+# plt.grid()
+# plt.show() 
+
+# Display Final Selected Features and Coefficients
+# print("\nFinal Selected Features and Coefficients:")
+# for feature, coef in zip(selected_features, model.coef_):
+    # print(f"{feature}: {coef:.4f}")
+
+```
+
+```{python}
+#| label: Task 3 Continued
+#| echo: false
+
+mse_scores = []
+r2_scores = []
+feature_counts = []
+
+# Model
+for k in range(1, 11):
+    rfe = RFE(estimator=LinearRegression(), n_features_to_select=k)
+    rfe.fit(X_train, y_train)
+
+    X_train_reduced = X_train.iloc[:, rfe.support_]
+    X_test_reduced = X_test.iloc[:, rfe.support_]
+
+    model = LinearRegression()
+    model.fit(X_train_reduced, y_train)
+    y_pred = model.predict(X_test_reduced)
+
+    mse_scores.append(mean_squared_error(y_test, y_pred))
+    r2_scores.append(r2_score(y_test, y_pred))
+    feature_counts.append(k)
+
+plt.figure(figsize=(8, 4))
+plt.plot(feature_counts, mse_scores, marker='o', label='MSE')
+plt.plot(feature_counts, r2_scores, marker='o', label='R² Score')
+plt.xlabel("Number of Features")
+plt.ylabel("Performance Metric")
+plt.legend()
+plt.grid()
+plt.show()
+
+# Identify the optimal number of features using 0.01 improvement threshold
+threshold = 0.01
+optimal_feature_count = feature_counts[0]
+
+for i in range(1, len(r2_scores)):
+    improvement = r2_scores[i] - r2_scores[i-1]
+    # print(f"Features: {feature_counts[i]}, Improvement: {improvement:.4f}") 
+    
+    if improvement < threshold:
+        optimal_feature_count = feature_counts[i-1]
+        break
+
+# print("\nOptimal number of features (0.01 threshold):", optimal_feature_count) 
+```
+
+```{python}
+#| label: Task 4
+#| echo: false
+
+# Final RFE with the optimal number of features
+rfe = RFE(LinearRegression(), n_features_to_select = 3)
+rfe.fit(X_train, y_train)
+
+selected_features = X.columns[rfe.support_]
+# print("Top 3 Features:", selected_features) 
+
+# Train final model with selected features
+model = LinearRegression()
+model.fit(X_train[selected_features], y_train)
+
+# print("Coefficients:", model.coef_)
+
+# Coefficient table across all RFE iterations
+
+# coef_table = pd.DataFrame(index = feature_counts, columns = X.columns)
+
+for k in feature_counts:
+    rfe = RFE(LinearRegression(), n_features_to_select = k)
+    rfe.fit(X_train, y_train)
+
+    selected = X.columns[rfe.support_]
+
+    model = LinearRegression()
+    model.fit(X_train[selected], y_train)
+
+    # Fill coefficients for selected features
+    # for feature, coef in zip(selected, model.coef_):
+        # coef_table.loc[k, feature] = coef
+
+# Replace NaN with 0
+# coef_table = coef_table.fillna(0) 
+
+# print("\nCoefficient Table:")
+# print(coef_table) 
+```
+
+## Analyze Feature Importance
+The three most important features are `BMI`, `SV1`, and `SV5` where `BMI` and `SV5` are the most important features, with significant contribution to the model's predictions. `SV1` also contributes but to a lesser extent. 
+The final set of selected features aligns with my hypothesis that `BMI` and `SV5` would have had the most significant impact on the target variable, and the final coefficients do not differ too widely from the initial coefficients, indicating that these features consistently contribute to the model's performance throughout the RFE process.
+
+## Reflection
+I learned that RFE is a powerful and systematic method for feature selection that can offer great insights into the data and features as the features are iteratively removed. The visualizations of the predictions offer a clear picture of how the model performs and how the feature selection impacts the data fitting. Ultimitately, RFE revealed how fewer features can perform almost identically if not extremely well compared to the full feature set, and helps with interpretability. 
+
+Compared to LASSO, RFE offers more insights throughout the process with clearer interpretation, while LASSO is more efficient and can be more effective for higher dimensional datasets. For the size and complexity of this dataset, RFE was a great choice to understand the role of each feature in the model, while LASSO would've given less insight into the importance of each feature and offered a direct interpretation of the data. 
+
+From the selected features, I can infer that `BMI` and `SV5` are liekly the most influential factors contributing to increased probability of a postiive diabetes diagnosis. 
