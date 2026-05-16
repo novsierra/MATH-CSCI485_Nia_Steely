@@ -1,0 +1,190 @@
+---
+title: "Assignment 5: Perceptron"
+author: "Nia Steely"
+date: today
+project:
+  type: website
+  output-dir: docs
+format:
+  pdf:
+    pdf-engine: xelatex
+    geometry: margin=1in
+    fontsize: 12pt
+    mainfont: "Times New Roman"
+engine: jupyter
+
+header-includes: |
+  \usepackage{setspace}
+  \onehalfspacing
+
+editor: source
+---
+
+```{python}
+#| label: python setup
+#| echo: false  
+import pandas as pd
+import numpy as np
+```
+
+```{python}
+#| label: Part 1
+#| echo: false 
+
+np.random.seed(42)
+
+df = read_csv("MATH-CSCI485_Nia_Steely/Assignment_5/data.csv")
+
+#Features
+X = df.iloc[:, :-1].values
+
+#Labels
+y = df.iloc[:, -1].values
+
+n_features = X.shape[1]
+
+weights = np.random.randn(n_features)
+bias = np.random.randn()
+
+#Learning rate
+r = 0.1
+
+#Number of training passes
+epochs = 100
+```
+
+```{python}
+#| label: Part 1 Cont.
+#| echo: false 
+
+def predict(x, weights, bias):
+    z = np.dot(weights, x) + bias
+
+    # Binary classification
+    if z >= 0:
+        return 1
+    else:
+        return 0
+
+
+
+#Training loop
+for epoch in range(epochs):
+
+    for i in range(len(X)):
+
+        x_i = X[i]
+        true_label = y[i]
+
+        # 2.1 classify point
+        classification = predict(x_i, weights, bias)
+
+        # 2.2 update if misclassified
+        if classification != true_label:
+
+            # 2.2.1 predicted 0 but should be 1
+            if classification == 0:
+
+                bias = bias + r
+                weights = weights + r * x_i
+
+            # 2.2.2 predicted 1 but should be 0
+            elif classification == 1:
+
+                bias = bias - r
+                weights = weights - r * x_i
+
+
+print("Final weights:", weights)
+print("Final bias:", bias)
+
+#Test predictions
+for x in X:
+    print(f"Input: {x}, Prediction: {predict(x, weights, bias)}")
+```
+
+```{python}
+#| label: Part 1 Ploting
+#| echo: false
+plt.figure(figsize=(8,6))
+
+plt.scatter(X[:,0], X[:,1], c=y)
+
+x_vals = np.linspace(X[:,0].min(), X[:,0].max(), 100)
+
+#Initial line - red
+if len(lines) > 0:
+    m, c = lines[0]
+    plt.plot(x_vals, m*x_vals + c, 'r', label="Initial")
+
+#Intermediate lines - green
+for m, c in lines[1:-1]:
+    plt.plot(x_vals, m*x_vals + c, 'g--', alpha=0.4)
+
+#Final line - black
+if len(lines) > 1:
+    m, c = lines[-1]
+    plt.plot(x_vals, m*x_vals + c, 'k', linewidth=2, label="Final")
+```
+
+```{python}
+#| label: Part 2
+#| echo: false
+
+#Sigmoid for regression
+def sigmoid(z):
+    return 1 / (1 + np.exp(-z))
+
+
+#Training loop for regression
+for epoch in range(epochs):
+
+    total_error = 0
+
+    for i in range(len(X)):
+
+        x_i = X[i]
+        true_y = y[i]
+
+        z = np.dot(weights, x_i) + bias
+        y_hat = sigmoid(z)
+        
+        error = true_y - y_hat
+
+        total_error += error**2
+
+        bias = bias + learning_rate * error
+
+        weights = weights + learning_rate * error * x_i
+
+    #Stop if error becomes small
+    if total_error < 0.001:
+        break
+
+print("Weights:", weights)
+print("Bias:", bias)
+```
+
+```{python}
+#| label: Part 2 Ploting
+#| echo: false
+plt.figure(figsize=(8,6))
+
+plt.scatter(X[:,0], X[:,1], c=y)
+
+x_vals = np.linspace(X[:,0].min(), X[:,0].max(), 100)
+
+#Initial line - red
+if len(lines) > 0:
+    m, c = lines[0]
+    plt.plot(x_vals, m*x_vals + c, 'r', label="Initial")
+
+#Intermediate lines - green
+for m, c in lines[1:-1]:
+    plt.plot(x_vals, m*x_vals + c, 'g--', alpha=0.4)
+
+#Final line - black
+if len(lines) > 1:
+    m, c = lines[-1]
+    plt.plot(x_vals, m*x_vals + c, 'k', linewidth=2, label="Final")
+```
